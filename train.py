@@ -18,10 +18,6 @@ import models
 import utils
 from dataset import get_dataset_dataloader
 
-args = arguments.parser(sys.argv)
-if not args.restart_file:
-    print(args)
-
 
 def run(
     model: nn.Module,
@@ -166,273 +162,279 @@ def run(
         save_true_screening,
     )
 
+if __name__ == "__main__":
+    args = arguments.parser(sys.argv)
+    if not args.restart_file:
+        print(args)
 
-# Make directory for save files
-os.makedirs(args.save_dir, exist_ok=True)
-os.makedirs(args.tensorboard_dir, exist_ok=True)
-if os.path.dirname(args.train_result_filename):
-    os.makedirs(os.path.dirname(args.train_result_filename), exist_ok=True)
 
-# Set GPU
-cmd = utils.set_cuda_visible_device(args.ngpu)
-os.environ["CUDA_VISIBLE_DEVICES"] = cmd
 
-# Read labels
-train_keys, test_keys, id_to_y = utils.read_data(args.filename, args.key_dir)
-train_keys2, test_keys2, id_to_y2 = utils.read_data(args.filename2, args.key_dir2)
-train_keys3, test_keys3, id_to_y3 = utils.read_data(args.filename3, args.key_dir3)
-train_keys4, test_keys4, id_to_y4 = utils.read_data(args.filename4, args.key_dir4)
+    # Make directory for save files
+    os.makedirs(args.save_dir, exist_ok=True)
+    os.makedirs(args.tensorboard_dir, exist_ok=True)
+    if os.path.dirname(args.train_result_filename):
+        os.makedirs(os.path.dirname(args.train_result_filename), exist_ok=True)
 
-# Model
-if args.model == "pignet":
-    model = models.PIGNet(args)
-elif args.model == "gnn":
-    model = models.GNN(args)
-elif args.model == "cnn3d_kdeep":
-    model = models.CNN3D_KDEEP(args)
-else:
-    print(f"No {args.model} model")
-    exit(-1)
+    # Set GPU
+    cmd = utils.set_cuda_visible_device(args.ngpu)
+    os.environ["CUDA_VISIBLE_DEVICES"] = cmd
 
-device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-model = utils.initialize_model(model, device, args.restart_file)
+    # Read labels
+    train_keys, test_keys, id_to_y = utils.read_data(args.filename, args.key_dir)
+    train_keys2, test_keys2, id_to_y2 = utils.read_data(args.filename2, args.key_dir2)
+    train_keys3, test_keys3, id_to_y3 = utils.read_data(args.filename3, args.key_dir3)
+    train_keys4, test_keys4, id_to_y4 = utils.read_data(args.filename4, args.key_dir4)
 
-if not args.restart_file:
-    n_param = sum(param.numel() for param in model.parameters() if param.requires_grad)
-    print("number of parameters : ", n_param)
+    # Model
+    if args.model == "pignet":
+        model = models.PIGNet(args)
+    elif args.model == "gnn":
+        model = models.GNN(args)
+    elif args.model == "cnn3d_kdeep":
+        model = models.CNN3D_KDEEP(args)
+    else:
+        print(f"No {args.model} model")
+        exit(-1)
 
-# Dataloader
-train_dataset, train_dataloader = get_dataset_dataloader(
-    train_keys, args.data_dir, id_to_y, args.batch_size, args.num_workers
-)
-test_dataset, test_dataloader = get_dataset_dataloader(
-    test_keys, args.data_dir, id_to_y, args.batch_size, args.num_workers, False
-)
-train_dataset2, train_dataloader2 = get_dataset_dataloader(
-    train_keys2, args.data_dir2, id_to_y2, args.batch_size, args.num_workers
-)
-test_dataset2, test_dataloader2 = get_dataset_dataloader(
-    test_keys2, args.data_dir2, id_to_y2, args.batch_size, args.num_workers, False
-)
-train_dataset3, train_dataloader3 = get_dataset_dataloader(
-    train_keys3, args.data_dir3, id_to_y3, args.batch_size, args.num_workers
-)
-test_dataset3, test_dataloader3 = get_dataset_dataloader(
-    test_keys3, args.data_dir3, id_to_y3, args.batch_size, args.num_workers, False
-)
-train_dataset4, train_dataloader4 = get_dataset_dataloader(
-    train_keys4, args.data_dir4, id_to_y4, args.batch_size, args.num_workers
-)
-test_dataset4, test_dataloader4 = get_dataset_dataloader(
-    test_keys4, args.data_dir4, id_to_y4, args.batch_size, args.num_workers, False
-)
+    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    model = utils.initialize_model(model, device, args.restart_file)
 
-# Optimizer and loss
-optimizer = torch.optim.Adam(
-    model.parameters(), lr=args.lr, weight_decay=args.weight_decay
-)
-loss_fn = nn.MSELoss()
+    if not args.restart_file:
+        n_param = sum(param.numel() for param in model.parameters() if param.requires_grad)
+        print("number of parameters : ", n_param)
 
-# train
-writer = SummaryWriter(args.tensorboard_dir)
-if args.restart_file:
-    restart_epoch = int(args.restart_file.split("_")[-1].split(".")[0])
-else:
-    restart_epoch = 0
-for epoch in range(restart_epoch, args.num_epochs):
-    st = time.time()
-    tmp_st = st
-
-    (
-        train_losses,
-        train_losses_der1,
-        train_losses_der2,
-        train_losses_docking,
-        train_losses_screening,
-    ) = ([], [], [], [], [])
-    (
-        test_losses,
-        test_losses_der1,
-        test_losses_der2,
-        test_losses_docking,
-        test_losses_screening,
-    ) = ([], [], [], [], [])
-
-    (
-        train_pred,
-        train_true,
-        train_pred_docking,
-        train_true_docking,
-        train_pred_screening,
-        train_true_screening,
-    ) = (dict(), dict(), dict(), dict(), dict(), dict())
-    (
-        test_pred,
-        test_true,
-        test_pred_docking,
-        test_true_docking,
-        test_pred_screening,
-        test_true_screening,
-    ) = (dict(), dict(), dict(), dict(), dict(), dict())
-
-    # iterator
-    train_data_iter, train_data_iter2, train_data_iter3, train_data_iter4 = (
-        iter(train_dataloader),
-        iter(train_dataloader2),
-        iter(train_dataloader3),
-        iter(train_dataloader4),
+    # Dataloader
+    train_dataset, train_dataloader = get_dataset_dataloader(
+        train_keys, args.data_dir, id_to_y, args.batch_size, args.num_workers
     )
-    test_data_iter, test_data_iter2, test_data_iter3, test_data_iter4 = (
-        iter(test_dataloader),
-        iter(test_dataloader2),
-        iter(test_dataloader3),
-        iter(test_dataloader4),
+    test_dataset, test_dataloader = get_dataset_dataloader(
+        test_keys, args.data_dir, id_to_y, args.batch_size, args.num_workers, False
+    )
+    train_dataset2, train_dataloader2 = get_dataset_dataloader(
+        train_keys2, args.data_dir2, id_to_y2, args.batch_size, args.num_workers
+    )
+    test_dataset2, test_dataloader2 = get_dataset_dataloader(
+        test_keys2, args.data_dir2, id_to_y2, args.batch_size, args.num_workers, False
+    )
+    train_dataset3, train_dataloader3 = get_dataset_dataloader(
+        train_keys3, args.data_dir3, id_to_y3, args.batch_size, args.num_workers
+    )
+    test_dataset3, test_dataloader3 = get_dataset_dataloader(
+        test_keys3, args.data_dir3, id_to_y3, args.batch_size, args.num_workers, False
+    )
+    train_dataset4, train_dataloader4 = get_dataset_dataloader(
+        train_keys4, args.data_dir4, id_to_y4, args.batch_size, args.num_workers
+    )
+    test_dataset4, test_dataloader4 = get_dataset_dataloader(
+        test_keys4, args.data_dir4, id_to_y4, args.batch_size, args.num_workers, False
     )
 
-    # Train
-    (
-        train_losses,
-        train_losses_der1,
-        train_losses_der2,
-        train_losses_docking,
-        train_losses_screening,
-        train_pred,
-        train_true,
-        train_pred_docking,
-        train_true_docking,
-        train_pred_screening,
-        train_true_screening,
-    ) = run(
-        model,
-        train_data_iter,
-        train_data_iter2,
-        train_data_iter3,
-        train_data_iter4,
-        True,
+    # Optimizer and loss
+    optimizer = torch.optim.Adam(
+        model.parameters(), lr=args.lr, weight_decay=args.weight_decay
     )
+    loss_fn = nn.MSELoss()
 
-    # Test
-    (
-        test_losses,
-        test_losses_der1,
-        test_losses_der2,
-        test_losses_docking,
-        test_losses_screening,
-        test_pred,
-        test_true,
-        test_pred_docking,
-        test_true_docking,
-        test_pred_screening,
-        test_true_screening,
-    ) = run(
-        model,
-        test_data_iter,
-        test_data_iter2,
-        test_data_iter3,
-        test_data_iter4,
-        False,
-    )
+    # train
+    writer = SummaryWriter(args.tensorboard_dir)
+    if args.restart_file:
+        restart_epoch = int(args.restart_file.split("_")[-1].split(".")[0])
+    else:
+        restart_epoch = 0
+    for epoch in range(restart_epoch, args.num_epochs):
+        st = time.time()
+        tmp_st = st
 
-    # Write tensorboard
-    writer.add_scalars(
-        "train",
-        {
-            "loss": train_losses,
-            "loss_der1": train_losses_der1,
-            "loss_der2": train_losses_der2,
-            "loss_docking": train_losses_docking,
-            "loss_screening": train_losses_screening,
-        },
-        epoch,
-    )
-    writer.add_scalars(
-        "test",
-        {
-            "loss": test_losses,
-            "loss_der1": test_losses_der1,
-            "loss_der2": test_losses_der2,
-            "loss_docking": test_losses_docking,
-            "loss_screening": test_losses_screening,
-        },
-        epoch,
-    )
+        (
+            train_losses,
+            train_losses_der1,
+            train_losses_der2,
+            train_losses_docking,
+            train_losses_screening,
+        ) = ([], [], [], [], [])
+        (
+            test_losses,
+            test_losses_der1,
+            test_losses_der2,
+            test_losses_docking,
+            test_losses_screening,
+        ) = ([], [], [], [], [])
 
-    # Write prediction
-    utils.write_result(
-        args.train_result_filename,
-        train_pred,
-        train_true,
-    )
-    utils.write_result(
-        args.test_result_filename,
-        test_pred,
-        test_true,
-    )
-    utils.write_result(
-        args.train_result_docking_filename,
-        train_pred_docking,
-        train_true_docking,
-    )
-    utils.write_result(
-        args.test_result_docking_filename,
-        test_pred_docking,
-        test_true_docking,
-    )
-    utils.write_result(
-        args.train_result_screening_filename,
-        train_pred_screening,
-        train_true_screening,
-    )
-    utils.write_result(
-        args.test_result_screening_filename,
-        test_pred_screening,
-        test_true_screening,
-    )
-    end = time.time()
+        (
+            train_pred,
+            train_true,
+            train_pred_docking,
+            train_true_docking,
+            train_pred_screening,
+            train_true_screening,
+        ) = (dict(), dict(), dict(), dict(), dict(), dict())
+        (
+            test_pred,
+            test_true,
+            test_pred_docking,
+            test_true_docking,
+            test_pred_screening,
+            test_true_screening,
+        ) = (dict(), dict(), dict(), dict(), dict(), dict())
 
-    # Cal R2
-    train_r2 = r2_score(
-        [train_true[k] for k in train_true.keys()],
-        [train_pred[k].sum() for k in train_true.keys()],
-    )
-    test_r2 = r2_score(
-        [test_true[k] for k in test_true.keys()],
-        [test_pred[k].sum() for k in test_true.keys()],
-    )
-
-    # Cal R
-    _, _, test_r, _, _ = stats.linregress(
-        [test_true[k] for k in test_true.keys()],
-        [test_pred[k].sum() for k in test_true.keys()],
-    )
-    _, _, train_r, _, _ = stats.linregress(
-        [train_true[k] for k in train_true.keys()],
-        [train_pred[k].sum() for k in train_true.keys()],
-    )
-    end = time.time()
-    if epoch == 0:
-        print(
-            "epoch\ttrain_l\ttrain_l_der1\ttrain_l_der2\ttrain_l_docking\t"
-            + "train_l_screening\ttest_l\ttest_l_der1\ttest_l_der2\t"
-            + "test_l_docking\ttest_l_screening\t"
-            + "train_r2\ttest_r2\ttrain_r\ttest_r\ttime"
+        # iterator
+        train_data_iter, train_data_iter2, train_data_iter3, train_data_iter4 = (
+            iter(train_dataloader),
+            iter(train_dataloader2),
+            iter(train_dataloader3),
+            iter(train_dataloader4),
         )
-    print(
-        f"{epoch}\t{train_losses:.3f}\t{train_losses_der1:.3f}\t"
-        + f"{train_losses_der2:.3f}\t{train_losses_docking:.3f}\t"
-        + f"{train_losses_screening:.3f}\t"
-        + f"{test_losses:.3f}\t{test_losses_der1:.3f}\t"
-        + f"{test_losses_der2:.3f}\t{test_losses_docking:.3f}\t"
-        + f"{test_losses_screening:.3f}\t"
-        + f"{train_r2:.3f}\t{test_r2:.3f}\t"
-        + f"{train_r:.3f}\t{test_r:.3f}\t{end-st:.3f}"
-    )
+        test_data_iter, test_data_iter2, test_data_iter3, test_data_iter4 = (
+            iter(test_dataloader),
+            iter(test_dataloader2),
+            iter(test_dataloader3),
+            iter(test_dataloader4),
+        )
 
-    name = os.path.join(args.save_dir, "save_" + str(epoch) + ".pt")
-    save_every = 1 if not args.save_every else args.save_every
-    if epoch % save_every == 0:
-        torch.save(model.state_dict(), name)
+        # Train
+        (
+            train_losses,
+            train_losses_der1,
+            train_losses_der2,
+            train_losses_docking,
+            train_losses_screening,
+            train_pred,
+            train_true,
+            train_pred_docking,
+            train_true_docking,
+            train_pred_screening,
+            train_true_screening,
+        ) = run(
+            model,
+            train_data_iter,
+            train_data_iter2,
+            train_data_iter3,
+            train_data_iter4,
+            True,
+        )
 
-    lr = args.lr * ((args.lr_decay) ** epoch)
-    for param_group in optimizer.param_groups:
-        param_group["lr"] = lr
+        # Test
+        (
+            test_losses,
+            test_losses_der1,
+            test_losses_der2,
+            test_losses_docking,
+            test_losses_screening,
+            test_pred,
+            test_true,
+            test_pred_docking,
+            test_true_docking,
+            test_pred_screening,
+            test_true_screening,
+        ) = run(
+            model,
+            test_data_iter,
+            test_data_iter2,
+            test_data_iter3,
+            test_data_iter4,
+            False,
+        )
+
+        # Write tensorboard
+        writer.add_scalars(
+            "train",
+            {
+                "loss": train_losses,
+                "loss_der1": train_losses_der1,
+                "loss_der2": train_losses_der2,
+                "loss_docking": train_losses_docking,
+                "loss_screening": train_losses_screening,
+            },
+            epoch,
+        )
+        writer.add_scalars(
+            "test",
+            {
+                "loss": test_losses,
+                "loss_der1": test_losses_der1,
+                "loss_der2": test_losses_der2,
+                "loss_docking": test_losses_docking,
+                "loss_screening": test_losses_screening,
+            },
+            epoch,
+        )
+
+        # Write prediction
+        utils.write_result(
+            args.train_result_filename,
+            train_pred,
+            train_true,
+        )
+        utils.write_result(
+            args.test_result_filename,
+            test_pred,
+            test_true,
+        )
+        utils.write_result(
+            args.train_result_docking_filename,
+            train_pred_docking,
+            train_true_docking,
+        )
+        utils.write_result(
+            args.test_result_docking_filename,
+            test_pred_docking,
+            test_true_docking,
+        )
+        utils.write_result(
+            args.train_result_screening_filename,
+            train_pred_screening,
+            train_true_screening,
+        )
+        utils.write_result(
+            args.test_result_screening_filename,
+            test_pred_screening,
+            test_true_screening,
+        )
+        end = time.time()
+
+        # Cal R2
+        train_r2 = r2_score(
+            [train_true[k] for k in train_true.keys()],
+            [train_pred[k].sum() for k in train_true.keys()],
+        )
+        test_r2 = r2_score(
+            [test_true[k] for k in test_true.keys()],
+            [test_pred[k].sum() for k in test_true.keys()],
+        )
+
+        # Cal R
+        _, _, test_r, _, _ = stats.linregress(
+            [test_true[k] for k in test_true.keys()],
+            [test_pred[k].sum() for k in test_true.keys()],
+        )
+        _, _, train_r, _, _ = stats.linregress(
+            [train_true[k] for k in train_true.keys()],
+            [train_pred[k].sum() for k in train_true.keys()],
+        )
+        end = time.time()
+        if epoch == 0:
+            print(
+                "epoch\ttrain_l\ttrain_l_der1\ttrain_l_der2\ttrain_l_docking\t"
+                + "train_l_screening\ttest_l\ttest_l_der1\ttest_l_der2\t"
+                + "test_l_docking\ttest_l_screening\t"
+                + "train_r2\ttest_r2\ttrain_r\ttest_r\ttime"
+            )
+        print(
+            f"{epoch}\t{train_losses:.3f}\t{train_losses_der1:.3f}\t"
+            + f"{train_losses_der2:.3f}\t{train_losses_docking:.3f}\t"
+            + f"{train_losses_screening:.3f}\t"
+            + f"{test_losses:.3f}\t{test_losses_der1:.3f}\t"
+            + f"{test_losses_der2:.3f}\t{test_losses_docking:.3f}\t"
+            + f"{test_losses_screening:.3f}\t"
+            + f"{train_r2:.3f}\t{test_r2:.3f}\t"
+            + f"{train_r:.3f}\t{test_r:.3f}\t{end-st:.3f}"
+        )
+
+        name = os.path.join(args.save_dir, "save_" + str(epoch) + ".pt")
+        save_every = 1 if not args.save_every else args.save_every
+        if epoch % save_every == 0:
+            torch.save(model.state_dict(), name)
+
+        lr = args.lr * ((args.lr_decay) ** epoch)
+        for param_group in optimizer.param_groups:
+            param_group["lr"] = lr
