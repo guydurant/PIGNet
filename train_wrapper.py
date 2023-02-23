@@ -81,7 +81,7 @@ def read_training_csv(csv_file, data_dir):
     proteins = [os.path.join(data_dir, protein) for protein in proteins]
     ligands = [os.path.join(data_dir, ligand) for ligand in ligands]
     pks = [float(pk) for pk in pks]
-    data = {{key: [protein, ligand, pk] for key, protein, ligand, pk in zip(keys, proteins, ligands, pks)}}
+    data = {key: [protein, ligand, pk] for key, protein, ligand, pk in zip(keys, proteins, ligands, pks)}
     return data
 
 def get_residues(protein_file_name, ligand_file_name):
