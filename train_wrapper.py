@@ -171,7 +171,7 @@ def generate_keys(model_name, pignet_data_dir):
             write_keys(test_keys, os.path.join(pignet_data_dir, mode, 'keys', 'train_keys.pkl'))
     # Now for scoring mode
     if not os.path.exists(os.path.join(f'temp_features/{model_name}/scoring/train_keys.pkl')):
-        write_keys(keys, f'temp_features/{model_name}/scoringtrain_keys.pkl')
+        write_keys(keys, f'temp_features/{model_name}/scoring/train_keys.pkl')
     return None 
 
 
