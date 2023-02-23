@@ -140,10 +140,10 @@ def generate_pdb_to_affinity(args, mode='scoring'):
             for key in data.keys():
                 f.write(f'{key}\t{data[key][2]}\n')    
     else:
-        all_pks = all_pks()
+        all_pks_list = all_pks()
         with open(os.path.join(args.pignet_data_dir, mode, 'pdb_to_affinity.txt'), 'w') as f:
             for key in os.listdir(f'{args.pignet_data_dir}/{mode}/data'):
-                f.write(f'{key}\t{all_pks[key]}\n')
+                f.write(f'{key}\t{all_pks_list[key]}\n')
     return None
 
 def generate_all_pdb_to_affinity(args):
