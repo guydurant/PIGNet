@@ -135,7 +135,7 @@ def generate_pdb_to_affinity(args, mode='scoring'):
             for key in os.listdir(f'{args.pignet_data_dir}/screening/data'):
                 f.write(f'{key}\t5\n')
     elif mode == 'scoring':
-        data = read_training_csv(args.csv_file)
+        data = read_training_csv(args.csv_file, args.data_dir)
         with open(f'temp_features/{args.model_name}/pdb_to_affinity.txt', 'w') as f:
             for key in data.keys():
                 f.write(f'{key}\t{data[key][2]}\n')    
