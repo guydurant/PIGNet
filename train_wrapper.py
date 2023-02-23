@@ -112,6 +112,24 @@ def return_int(string):
     except:
         return int(string[:-1])
 
+def read_pdb_line(line):
+    atom_type = line[0:6].strip()
+    atom_number = line[6:11].strip()
+    atom_name = line[12:16].strip()
+    alt_loc = line[16:17].strip()
+    res_name = line[17:20].strip()
+    chain_id = line[21:22].strip()
+    res_number = line[22:26].strip()
+    icode = line[26:27].strip()
+    x = float(line[30:38].strip())
+    y = float(line[38:46].strip())
+    z = float(line[46:54].strip())
+    occupancy = float(line[54:60].strip())
+    temp_factor = float(line[60:66].strip())
+    element = line[76:78].strip()
+    charge = line[78:80].strip()
+    return res_number, res_name, chain_id
+
 def create_pignet_pocket_file(protein_file_name, ligand_file_name):
     residues = list(set(get_residues(protein_file_name, ligand_file_name)))
     # print(residues)
@@ -120,14 +138,9 @@ def create_pignet_pocket_file(protein_file_name, ligand_file_name):
     pocket_lines = []
     for l in lines:
         if l.split()[0] == 'ATOM':
-            if len(l.split()) == 11:
-                number = l.split()[4][1:]
-                chain = l.split()[4][0]
-                if (return_int(number), l.split()[3], chain) in residues:
-                    pocket_lines.append(l)
-            else:
-                if (return_int(l.split()[5]), l.split()[3], l.split()[4]) in residues:
-                    pocket_lines.append(l)
+            res_number, res_name, chain_id = read_pdb_line(l)
+            if (res_number, res_name, chain_id) in residues:
+                pocket_lines.append(l)
     return pocket_lines
 
 def pickle_data(data, model_name):
