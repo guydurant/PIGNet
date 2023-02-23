@@ -76,7 +76,7 @@ def all_pks():
 
 def read_training_csv(csv_file, data_dir):
     data = pd.read_csv(csv_file)
-    proteins, ligands, pks, keys = data['proteins'].to_list(), data['ligands'].to_list(), data['pK'].to_list(), data['key'].to_list()
+    proteins, ligands, pks, keys = data['protein'].to_list(), data['ligand'].to_list(), data['pk'].to_list(), data['key'].to_list()
     # Add relative path (.data_dir)
     proteins = [os.path.join(data_dir, protein) for protein in proteins]
     ligands = [os.path.join(data_dir, ligand) for ligand in ligands]
