@@ -130,9 +130,14 @@ def pickle_data(data, model_name):
         #if path exists
         if os.path.exists(f'temp_features/{model_name}/{key}'):
             continue
-        protein_pocket_mol = Chem.MolFromPDBBlock(create_pignet_pocket_file(data[key][0], data[key][1]))
+        lines = create_pignet_pocket_file(data[key][0], data[key][1])
+        with open(f'temp_files/{key}_pocket.pdb', 'w') as f:
+            for line in lines:
+                f.write(line+'\n')
+        protein_pocket_mol = Chem.MolFromPDBFile(f'temp_files/{key}_pocket.pdb', removeHs=False)
         ligand_mol = Chem.MolFromMolFile(data[key][1])
         pickle.dump((ligand_mol, 0, protein_pocket_mol, []), open(f'temp_features/{model_name}/{key}', 'wb'))
+        os.system(f'rm temp_files/{key}_pocket.pdb')
     return None
 
 def generate_pdb_to_affinity(args, mode='scoring'):
