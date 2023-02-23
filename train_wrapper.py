@@ -106,6 +106,12 @@ def get_residues(protein_file_name, ligand_file_name):
                     break
     return residues
 
+def return_int(string):
+    try:
+        return int(string)
+    except:
+        return int(string[:-1])
+
 def create_pignet_pocket_file(protein_file_name, ligand_file_name):
     residues = list(set(get_residues(protein_file_name, ligand_file_name)))
     # print(residues)
@@ -114,7 +120,7 @@ def create_pignet_pocket_file(protein_file_name, ligand_file_name):
     pocket_lines = []
     for l in lines:
         if l.split()[0] == 'ATOM':
-            if (int(l.split()[5]), l.split()[3], l.split()[4]) in residues:
+            if (return_int(l.split()[5]), l.split()[3], l.split()[4]) in residues:
                 pocket_lines.append(l)
     return pocket_lines
 
