@@ -473,6 +473,8 @@ if __name__ == "__main__":
     parser.add_argument('--predict', action='store_true') 
     args = parser.parse_args()
     if args.train:
+        if not os.path.exists(f'temp_features/{args.model_name}'):
+            os.mkdir(f'temp_features/{args.model_name}')
         # Check PigNet files exist
         get_files(args.pignet_data_dir)
         # Check featurised data exists
