@@ -121,8 +121,8 @@ def create_pignet_pocket_file(protein_file_name, ligand_file_name):
     for l in lines:
         if l.split()[0] == 'ATOM':
             if len(l.split()) == 11:
-                number = l.split()[4][:-1]
-                chain = l.split()[4][-1]
+                number = l.split()[4][1:]
+                chain = l.split()[4][0]
                 if (return_int(number), l.split()[3], chain) in residues:
                     pocket_lines.append(l)
             else:
