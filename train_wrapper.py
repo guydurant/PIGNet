@@ -194,7 +194,7 @@ def generate_all_pdb_to_affinity(args):
 def generate_keys(model_name, pignet_data_dir):
     core_keys = [i for i in open('coreset_keys.txt', 'r').read().split('\n') if i != '']
     for mode in ['docking', 'random', 'screening']:
-        if not os.path.exists(os.path.join(pignet_data_dir, mode, 'keys', 'train_keys.pkl')):
+        if not os.path.exists(os.path.join(pignet_data_dir, mode, 'train_keys.pkl')):
             keys = os.listdir(f'{pignet_data_dir}/{mode}/data')
             train_keys = []
             test_keys = []
@@ -203,8 +203,8 @@ def generate_keys(model_name, pignet_data_dir):
                     test_keys.append(key)
                 else:
                     train_keys.append(key)
-            write_keys(train_keys, os.path.join(pignet_data_dir, mode, 'keys', 'train_keys.pkl'))
-            write_keys(test_keys, os.path.join(pignet_data_dir, mode, 'keys', 'train_keys.pkl'))
+            write_keys(train_keys, os.path.join(pignet_data_dir, mode, 'train_keys.pkl'))
+            write_keys(test_keys, os.path.join(pignet_data_dir, mode, 'test_keys.pkl'))
     # Now for scoring mode
     if not os.path.exists(os.path.join(f'temp_features/{model_name}/scoring/train_keys.pkl')):
         write_keys(keys, f'temp_features/{model_name}/scoring/train_keys.pkl')
@@ -244,10 +244,10 @@ def set_up_training(args):
         pass
 
     # Read labels
-    train_keys, test_keys, id_to_y = utils.read_data(f'temp_features/{args.model_name}/scoring/pdb_to_affinity.txt','data/pdbbind_v2019/scoring/keys')
-    train_keys2, test_keys2, id_to_y2 = utils.read_data(f'{args.pignet_data_dir}/docking/pdb_to_affinity.txt', f'{args.pignet_data_dir}/docking/keys')
-    train_keys3, test_keys3, id_to_y3 = utils.read_data(f'{args.pignet_data_dir}/random/pdb_to_affinity.txt', f'{args.pignet_data_dir}/random/keys')
-    train_keys4, test_keys4, id_to_y4 = utils.read_data(f'{args.pignet_data_dir}/cross/pdb_to_affinity.txt', f'{args.pignet_data_dir}/cross/keys')
+    train_keys, test_keys, id_to_y = utils.read_data(f'temp_features/{args.model_name}/scoring/pdb_to_affinity.txt','data/pdbbind_v2019/scoring')
+    train_keys2, test_keys2, id_to_y2 = utils.read_data(f'{args.pignet_data_dir}/docking/pdb_to_affinity.txt', f'{args.pignet_data_dir}/docking')
+    train_keys3, test_keys3, id_to_y3 = utils.read_data(f'{args.pignet_data_dir}/random/pdb_to_affinity.txt', f'{args.pignet_data_dir}/random')
+    train_keys4, test_keys4, id_to_y4 = utils.read_data(f'{args.pignet_data_dir}/cross/pdb_to_affinity.txt', f'{args.pignet_data_dir}/cross')
     processed_data = (train_keys, test_keys, id_to_y, train_keys2, test_keys2, id_to_y2, train_keys3, test_keys3, id_to_y3, train_keys4, test_keys4, id_to_y4)
 
     # Model
