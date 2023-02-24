@@ -245,7 +245,7 @@ def set_up_training(args):
         pass
 
     # Read labels
-    train_keys, test_keys, id_to_y = utils.read_data(f'temp_features/{args.model_name}/pdb_to_affinity.txt',f'temp_features/{args.model_name}/scoring')
+    train_keys, test_keys, id_to_y = utils.read_data(f'temp_features/{args.model_name}/pdb_to_affinity.txt',f'temp_features/{args.model_name}/')
     train_keys2, test_keys2, id_to_y2 = utils.read_data(f'{args.pignet_data_dir}/docking/pdb_to_affinity.txt', f'{args.pignet_data_dir}/docking')
     train_keys3, test_keys3, id_to_y3 = utils.read_data(f'{args.pignet_data_dir}/random/pdb_to_affinity.txt', f'{args.pignet_data_dir}/random')
     train_keys4, test_keys4, id_to_y4 = utils.read_data(f'{args.pignet_data_dir}/cross/pdb_to_affinity.txt', f'{args.pignet_data_dir}/cross')
@@ -271,7 +271,7 @@ def set_up_training(args):
     return model, device, processed_data
 
 def load_all_dataloaders(args, processed_data):
-    train_dataset, train_dataloader = get_dataset_dataloader(processed_data[0], f'temp_features/{args.model_name}/scoring/data', processed_data[2], args.batch_size, args.num_workers)
+    train_dataset, train_dataloader = get_dataset_dataloader(processed_data[0], f'temp_features/{args.model_name}/', processed_data[2], args.batch_size, args.num_workers)
     # test_dataset, test_dataloader = get_dataset_dataloader(processed_data[1], args.data_dir, processed_data[2], args.batch_size, args.num_workers, False)
     train_dataset2, train_dataloader2 = get_dataset_dataloader(processed_data[3], args.data_dir2, processed_data[5], args.batch_size, args.num_workers)
     # test_dataset2, test_dataloader2 = get_dataset_dataloader(processed_data[4], args.data_dir2, processed_data[5], args.batch_size, args.num_workers, False)
