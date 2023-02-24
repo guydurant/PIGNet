@@ -114,7 +114,7 @@ def return_int(string):
     except:
         return int(string[:-1])
 
-def read_pdb_line(line, mode=='pocket'):
+def read_pdb_line(line, mode='pocket'):
     atom_type = line[0:6].strip()
     atom_number = line[6:11].strip()
     atom_name = line[12:16].strip()
