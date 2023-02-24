@@ -192,7 +192,7 @@ def generate_all_pdb_to_affinity(args):
         generate_pdb_to_affinity(args, mode='scoring')
 
 def generate_keys(model_name, pignet_data_dir):
-    core_keys = [i for i in open('data/core_keys.txt', 'r').read().split('\n') if i != '']
+    core_keys = [i for i in open('core_keys.txt', 'r').read().split('\n') if i != '']
     for mode in ['docking', 'random', 'screening']:
         if not os.path.exists(os.path.join(pignet_data_dir, mode, 'keys', 'train_keys.pkl')):
             keys = os.listdir(f'{pignet_data_dir}/{mode}/data')
