@@ -103,6 +103,7 @@ def get_residues(protein_file_name, ligand_file_name):
                 continue
             else:
                 lig_coord = lig_conf.GetAtomPosition(ligand_atom.GetIdx())
+                lig_coord = (lig_coord.x, lig_coord.y, lig_coord.z)
                 if np.linalg.norm(atom_coords - lig_coord) < 5:
                     residues.append((res_number, res_name, chain_id))
                     break
