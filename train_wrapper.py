@@ -208,7 +208,7 @@ def generate_keys(args):
     # Now for scoring mode
     if not os.path.exists(os.path.join(f'temp_features/{args.model_name}/train_keys.pkl')):
         data = read_training_csv(args.csv_file, args.data_dir)
-        write_keys(data.keys(), f'temp_features/{args.model_name}/train_keys.pkl')
+        write_keys(list(data.keys()), f'temp_features/{args.model_name}/train_keys.pkl')
     return None 
 
 
