@@ -284,7 +284,7 @@ def load_all_dataloaders(args, processed_data):
 
 def train_model(args):
     model, device, processed_data = set_up_training(args)
-    train_dataloader, train_dataloader2,  train_dataloader3, train_dataloader4 = load_all_dataloaders(args)
+    train_dataloader, train_dataloader2,  train_dataloader3, train_dataloader4 = load_all_dataloaders(args, processed_data)
     optimizer = torch.optim.Adam(
         model.parameters(), lr=args.lr, weight_decay=args.weight_decay
     )
