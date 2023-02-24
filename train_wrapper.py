@@ -188,7 +188,7 @@ def generate_all_pdb_to_affinity(args):
         if not os.path.exists(os.path.join(args.pignet_data_dir, mode, 'pdb_to_affinity.txt')):
             generate_pdb_to_affinity(args, mode=mode)
     # now for mode == 'scoring'
-    if not os.path.exists(f'temp_features/{args.model_name}/scoring/pdb_to_affinity.txt'):
+    if not os.path.exists(f'temp_features/{args.model_name}/pdb_to_affinity.txt'):
         generate_pdb_to_affinity(args, mode='scoring')
 
 def generate_keys(model_name, pignet_data_dir):
@@ -206,8 +206,8 @@ def generate_keys(model_name, pignet_data_dir):
             write_keys(train_keys, os.path.join(pignet_data_dir, mode, 'train_keys.pkl'))
             write_keys(test_keys, os.path.join(pignet_data_dir, mode, 'test_keys.pkl'))
     # Now for scoring mode
-    if not os.path.exists(os.path.join(f'temp_features/{model_name}/scoring/train_keys.pkl')):
-        write_keys(keys, f'temp_features/{model_name}/scoring/train_keys.pkl')
+    if not os.path.exists(os.path.join(f'temp_features/{model_name}/train_keys.pkl')):
+        write_keys(keys, f'temp_features/{model_name}/train_keys.pkl')
     return None 
 
 
@@ -244,7 +244,7 @@ def set_up_training(args):
         pass
 
     # Read labels
-    train_keys, test_keys, id_to_y = utils.read_data(f'temp_features/{args.model_name}/scoring/pdb_to_affinity.txt','data/pdbbind_v2019/scoring')
+    train_keys, test_keys, id_to_y = utils.read_data(f'temp_features/{args.model_name}/scoring/pdb_to_affinity.txt',f'temp_features/{args.model_name}/scoring')
     train_keys2, test_keys2, id_to_y2 = utils.read_data(f'{args.pignet_data_dir}/docking/pdb_to_affinity.txt', f'{args.pignet_data_dir}/docking')
     train_keys3, test_keys3, id_to_y3 = utils.read_data(f'{args.pignet_data_dir}/random/pdb_to_affinity.txt', f'{args.pignet_data_dir}/random')
     train_keys4, test_keys4, id_to_y4 = utils.read_data(f'{args.pignet_data_dir}/cross/pdb_to_affinity.txt', f'{args.pignet_data_dir}/cross')
