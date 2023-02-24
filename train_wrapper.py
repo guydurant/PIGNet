@@ -88,13 +88,15 @@ def get_residues(protein_file_name, ligand_file_name):
     # Load ligand and protein
     ligand = Chem.MolFromMolFile(ligand_file_name)
     lig_conf = ligand.GetConformer()
-    protein = Chem.MolFromPDBFile(protein_file_name)
-    protein_conf = protein.GetConformer()
+    with open(protein_file_name, 'r') as f:
+        protein_lines = f.readlines()
+    protein_lines = [p for p in protein_lines if p[:4] == 'ATOM']
     # Get residues within 5A of ligand
     residues = []
-    for atom in protein.GetAtoms():
-        atom_coords = protein_conf.GetAtomPosition(atom.GetIdx())
-        if atom.GetAtomicNum() == 1:
+    for line in protein_lines:
+        x, y, z, element, res_number, res_name, chain_id = read_pdb_line(line, mode='all_protein')
+        atom_coords = x, y, z
+        if element == 'H':
             continue
         for ligand_atom in ligand.GetAtoms():
             if ligand_atom.GetAtomicNum() == 1:
@@ -102,7 +104,7 @@ def get_residues(protein_file_name, ligand_file_name):
             else:
                 lig_coord = lig_conf.GetAtomPosition(ligand_atom.GetIdx())
                 if np.linalg.norm(atom_coords - lig_coord) < 5:
-                    residues.append((atom.GetPDBResidueInfo().GetResidueNumber(), atom.GetPDBResidueInfo().GetResidueName(), atom.GetPDBResidueInfo().GetChainId()))
+                    residues.append((res_number, res_name, chain_id))
                     break
     return residues
 
@@ -112,7 +114,7 @@ def return_int(string):
     except:
         return int(string[:-1])
 
-def read_pdb_line(line):
+def read_pdb_line(line, mode=='pocket'):
     atom_type = line[0:6].strip()
     atom_number = line[6:11].strip()
     atom_name = line[12:16].strip()
@@ -128,7 +130,10 @@ def read_pdb_line(line):
     temp_factor = float(line[60:66].strip())
     element = line[76:78].strip()
     charge = line[78:80].strip()
-    return res_number, res_name, chain_id
+    if mode == 'pocket':
+        return res_number, res_name, chain_id
+    elif mode == 'all_protein':
+        return x, y, z, element, res_number, res_name, chain_id
 
 def create_pignet_pocket_file(protein_file_name, ligand_file_name):
     residues = list(set(get_residues(protein_file_name, ligand_file_name)))
@@ -138,7 +143,7 @@ def create_pignet_pocket_file(protein_file_name, ligand_file_name):
     pocket_lines = []
     for l in lines:
         if l.split()[0] == 'ATOM':
-            res_number, res_name, chain_id = read_pdb_line(l)
+            res_number, res_name, chain_id = read_pdb_line(l, mode='pocket')
             if (res_number, res_name, chain_id) in residues:
                 pocket_lines.append(l)
     return pocket_lines
