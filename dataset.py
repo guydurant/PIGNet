@@ -181,9 +181,10 @@ def get_A_metal_complexes(ligand_mol: Mol, target_mol: Mol) -> np.ndarray:
     )
     target_metal_indice = np.array(
         [
-            idx
-            for idx in range(target_mol.GetNumAtoms())
-            if target_mol.GetAtomWithIdx(i).GetSymbol() in METALS
+            atom.GetIdx()
+            for atom in target_mol.GetAtoms()
+            # for idx in range(target_mol.GetNumAtoms())
+            if atom.GetSymbol() in METALS
         ]
     )
 
