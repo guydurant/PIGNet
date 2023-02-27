@@ -368,6 +368,8 @@ def train_model(args):
             True,
             device,
             args,
+            loss_fn,
+            optimizer,
         )
 
         # Test

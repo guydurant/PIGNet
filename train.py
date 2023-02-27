@@ -28,6 +28,8 @@ def run(
     train_mode: bool,
     device,
     args,
+    loss_fn,
+    optimizer,
 ) -> Tuple[Union[float, Dict[str, List[float]]]]:
     model.train() if train_mode else model.eval()
     losses, losses_der1, losses_der2, losses_docking, losses_screening = (
