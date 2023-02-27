@@ -367,6 +367,7 @@ def train_model(args):
             train_data_iter4,
             True,
             device,
+            args,
         )
 
         # Test

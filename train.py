@@ -27,6 +27,7 @@ def run(
     data_iter4: Iterable,
     train_mode: bool,
     device,
+    args,
 ) -> Tuple[Union[float, Dict[str, List[float]]]]:
     model.train() if train_mode else model.eval()
     losses, losses_der1, losses_der2, losses_docking, losses_screening = (
