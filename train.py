@@ -115,56 +115,57 @@ def run(
         if train_mode:
             loss_all.backward()
             optimizer.step()
-        losses.append(loss.data.cpu().numpy())
-        losses_der1.append(loss_der1.data.cpu().numpy())
-        losses_der2.append(loss_der2.data.cpu().numpy())
-        losses_docking.append(loss_docking.data.cpu().numpy())
-        losses_screening.append(loss_screening.data.cpu().numpy())
-        losses_screening.append(loss_screening2.data.cpu().numpy())
-        affinity = affinity.data.cpu().numpy()
-        pred = pred.data.cpu().numpy()
-        for i in range(len(keys)):
-            save_pred[keys[i]] = pred[i]
-            save_true[keys[i]] = affinity[i]
+        # losses.append(loss.data.cpu().numpy())
+        # losses_der1.append(loss_der1.data.cpu().numpy())
+        # losses_der2.append(loss_der2.data.cpu().numpy())
+        # losses_docking.append(loss_docking.data.cpu().numpy())
+        # losses_screening.append(loss_screening.data.cpu().numpy())
+        # losses_screening.append(loss_screening2.data.cpu().numpy())
+        # affinity = affinity.data.cpu().numpy()
+        # pred = pred.data.cpu().numpy()
+        # for i in range(len(keys)):
+        #     save_pred[keys[i]] = pred[i]
+        #     save_true[keys[i]] = affinity[i]
 
-        if len(keys_docking) > 0:
-            pred_docking = pred_docking.data.cpu().numpy()
-            for i in range(len(keys_docking)):
-                save_pred_docking[keys_docking[i]] = pred_docking[i]
-                save_true_docking[keys_docking[i]] = affinity_docking[i]
+        # if len(keys_docking) > 0:
+        #     pred_docking = pred_docking.data.cpu().numpy()
+        #     for i in range(len(keys_docking)):
+        #         save_pred_docking[keys_docking[i]] = pred_docking[i]
+        #         save_true_docking[keys_docking[i]] = affinity_docking[i]
 
-        if len(keys_screening) > 0:
-            pred_screening = pred_screening.data.cpu().numpy()
-            for i in range(len(keys_screening)):
-                save_pred_screening[keys_screening[i]] = pred_screening[i]
-                save_true_screening[keys_screening[i]] = affinity_screening[i]
+        # if len(keys_screening) > 0:
+        #     pred_screening = pred_screening.data.cpu().numpy()
+        #     for i in range(len(keys_screening)):
+        #         save_pred_screening[keys_screening[i]] = pred_screening[i]
+        #         save_true_screening[keys_screening[i]] = affinity_screening[i]
 
-        if len(keys_screening2) > 0:
-            pred_screening2 = pred_screening2.data.cpu().numpy()
-            for i in range(len(keys_screening2)):
-                save_pred_screening[keys_screening2[i]] = pred_screening2[i]
-                save_true_screening[keys_screening2[i]] = affinity_screening2[i]
+        # if len(keys_screening2) > 0:
+        #     pred_screening2 = pred_screening2.data.cpu().numpy()
+        #     for i in range(len(keys_screening2)):
+        #         save_pred_screening[keys_screening2[i]] = pred_screening2[i]
+        #         save_true_screening[keys_screening2[i]] = affinity_screening2[i]
 
-        i_batch += 1
+        # i_batch += 1
 
-    losses = np.mean(np.array(losses))
-    losses_der1 = np.mean(np.array(losses_der1))
-    losses_der2 = np.mean(np.array(losses_der2))
-    losses_docking = np.mean(np.array(losses_docking))
-    losses_screening = np.mean(np.array(losses_screening))
-    return (
-        losses,
-        losses_der1,
-        losses_der2,
-        losses_docking,
-        losses_screening,
-        save_pred,
-        save_true,
-        save_pred_docking,
-        save_true_docking,
-        save_pred_screening,
-        save_true_screening,
-    )
+    # losses = np.mean(np.array(losses))
+    # losses_der1 = np.mean(np.array(losses_der1))
+    # losses_der2 = np.mean(np.array(losses_der2))
+    # losses_docking = np.mean(np.array(losses_docking))
+    # losses_screening = np.mean(np.array(losses_screening))
+    # return (
+    #     losses,
+    #     losses_der1,
+    #     losses_der2,
+    #     losses_docking,
+    #     losses_screening,
+    #     save_pred,
+    #     save_true,
+    #     save_pred_docking,
+    #     save_true_docking,
+    #     save_pred_screening,
+    #     save_true_screening,
+    # )
+    return None
 
 if __name__ == "__main__":
     args = arguments.parser(sys.argv)
