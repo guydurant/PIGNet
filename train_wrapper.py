@@ -277,7 +277,7 @@ def load_all_dataloaders(args, processed_data):
     # test_dataset2, test_dataloader2 = get_dataset_dataloader(processed_data[4], args.data_dir2, processed_data[5], args.batch_size, args.num_workers, False)
     train_dataset3, train_dataloader3 = get_dataset_dataloader(processed_data[6], f'{args.pignet_data_dir}/random/data', processed_data[8], args.batch_size, args.num_workers)
     # test_dataset3, test_dataloader3 = get_dataset_dataloader(processed_data[7], args.data_dir3, processed_data[8], args.batch_size, args.num_workers, False)
-    train_dataset4, train_dataloader4 = get_dataset_dataloader(processed_data[8], f'{args.pignet_data_dir}/screening/data', processed_data[10], args.batch_size, args.num_workers)
+    train_dataset4, train_dataloader4 = get_dataset_dataloader(processed_data[9], f'{args.pignet_data_dir}/screening/data', processed_data[11], args.batch_size, args.num_workers)
     # test_dataset4, test_dataloader4 = get_dataset_dataloader(processed_data[9], args.data_dir4, processed_data[10], args.batch_size, args.num_workers, False)
     return train_dataloader, train_dataloader2, train_dataloader3, train_dataloader4, 
 # Optimizer and loss
