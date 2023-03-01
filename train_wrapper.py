@@ -452,10 +452,10 @@ def train_model(args):
         # end = time.time()
 
         # Cal R2
-        train_r2 = r2_score(
-            [train_true[k] for k in train_true.keys()],
-            [train_pred[k].sum() for k in train_true.keys()],
-        )
+        # train_r2 = r2_score(
+        #     [train_true[k] for k in train_true.keys()],
+        #     [train_pred[k].sum() for k in train_true.keys()],
+        # )
         # test_r2 = r2_score(
         #     [test_true[k] for k in test_true.keys()],
         #     [test_pred[k].sum() for k in test_true.keys()],
@@ -466,11 +466,11 @@ def train_model(args):
         #     [test_true[k] for k in test_true.keys()],
         #     [test_pred[k].sum() for k in test_true.keys()],
         # )
-        _, _, train_r, _, _ = stats.linregress(
-            [train_true[k] for k in train_true.keys()],
-            [train_pred[k].sum() for k in train_true.keys()],
-        )
-        end = time.time()
+        # _, _, train_r, _, _ = stats.linregress(
+        #     [train_true[k] for k in train_true.keys()],
+        #     [train_pred[k].sum() for k in train_true.keys()],
+        # )
+        # end = time.time()
         # if epoch == 0:
         #     print(
         #         "epoch\ttrain_l\ttrain_l_der1\ttrain_l_der2\ttrain_l_docking\t"
