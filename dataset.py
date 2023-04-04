@@ -174,9 +174,11 @@ def get_A_metal_complexes(ligand_mol: Mol, target_mol: Mol) -> np.ndarray:
     target_h_acc_indice = get_hbond_atom_indices(target_mol, HBOND_ACCEPPTOR_SMARTS)
     ligand_metal_indice = np.array(
         [
-            idx
-            for idx in range(ligand_mol.GetNumAtoms())
-            if ligand_mol.GetAtomWithIdx(i).GetSymbol() in METALS
+            atom.GetIdx()
+            # for idx in range(ligand_mol.GetNumAtoms())
+            for atom in ligand_mol.GetAtoms()
+            # if ligand_mol.GetAtomWithIdx(i).GetSymbol() in METALS
+            if atom.GetSymbol() in METALS
         ]
     )
     target_metal_indice = np.array(
@@ -358,3 +360,17 @@ def tensor_collate_fn(batch: List[Any]) -> Dict[str, Any]:
             ret_dict[key] = value
 
     return ret_dict
+
+if __name__ == "__main__":
+    import time
+    print(time.time())
+    file = 'temp_features/pignet_crystal_biased/1a0q'
+    with open(file, 'rb') as f:
+        m1, _, m2, _ = pickle.load(f)
+
+
+    print(time.time())
+    sample = mol_to_feature(m1, m2)
+    # sample["affinity"] = self.id_to_y[key] * -1.36
+    # sample["key"] = key
+    print(time.time())
