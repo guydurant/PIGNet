@@ -1,14 +1,16 @@
 #!/bin/bash
 CONDA_BASE=$(conda info --base)
-conda create -y -n pignet python=3.6
+conda create -y -n pignet -c pytorch -c conda-forge pytorch=1.12.1=py3.9_cuda11.6_cudnn8.3.2_0 
 source $CONDA_BASE/etc/profile.d/conda.sh
 conda activate pignet
 
-conda install -y -c rdkit rdkit
-conda install -y pytorch -c pytorch
-conda install -y -c anaconda cudatoolkit
+conda install -y -c conda-forge rdkit
+#conda install -y pytorch=1.12.1=py3.9_cuda11.6_cudnn8.3.2_0 -c pytorch
+#conda install -y -c anaconda cudatoolkit
 conda install -y -c conda-forge numpy
 conda install -y -c conda-forge biopython
 conda install -y -c anaconda scikit-learn
 conda install -y -c conda-forge scipy
-conda install -y -c bioconda smina 
+conda install -y -c bioconda smina
+pip install tqdm
+pip install tensorboard
