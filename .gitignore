@@ -1,3 +1,17 @@
 casf2016/*
 data/pdbbind_v2019/*
 __pycache__/*
+temp_features
+temp_files
+temp_models
+temp_pignet
+temp_pignet_raw
+benchmarks/*/*
+results
+log/*
+runs/*
+save/*
+log
+benchmarks
+casf2016_benchmarks
+data/*
