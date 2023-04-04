@@ -6,7 +6,7 @@ import pickle
 from rdkit import Chem
 from tqdm import tqdm
 from data.generate_keys import write_keys
-from train import run
+# from train import run
 # import arguments
 import utils
 import models
@@ -241,6 +241,7 @@ def set_up_training(args):
     if args.ngpu > 0:
         cmd = utils.set_cuda_visible_device(args.ngpu)
         os.environ["CUDA_VISIBLE_DEVICES"] = cmd
+        print(os.environ["CUDA_VISIBLE_DEVICES"])
     else:
         pass
 
@@ -262,13 +263,29 @@ def set_up_training(args):
         print(f"No {args.model} model")
         exit()
 
-    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    # if torch.cuda.is_available():
+    print('Using CUDA')
+    device = torch.device("cuda")
+    # else:
+    #     print('Using CPU')
+    #     device = torch.device("cpu")
     model = utils.initialize_model(model, device, args.restart_file)
 
     if not args.restart_file:
         n_param = sum(param.numel() for param in model.parameters() if param.requires_grad)
         print("number of parameters : ", n_param)
     return model, device, processed_data
+
+def set_up_predicting(args):
+    data = read_training_csv(args.val_csv_file, args.val_data_dir)
+    with open(f'temp_features/{args.val_csv_file.split("/")[-1].split(".csv")[0]}/pdb_to_affinity.txt', 'w') as f:
+        for key in data.keys():
+            f.write(f'{key}\t{data[key][2]}\n')    
+    pickle_data(read_training_csv(args.val_csv_file, args.val_data_dir), f'{args.val_csv_file.split("/")[-1].split(".csv")[0]}')
+    if not os.path.exists(os.path.join(f'temp_features/{args.val_csv_file.split("/")[-1].split(".csv")[0]}/train_keys.pkl')):
+        data = read_training_csv(args.val_csv_file, args.val_data_dir)
+        write_keys(list(data.keys()), f'temp_features/{args.val_csv_file.split("/")[-1].split(".csv")[0]}/train_keys.pkl')
+    return None
 
 def load_all_dataloaders(args, processed_data):
     train_dataset, train_dataloader = get_dataset_dataloader(processed_data[0], f'temp_features/{args.model_name}', processed_data[2], args.batch_size, args.num_workers)
@@ -282,13 +299,129 @@ def load_all_dataloaders(args, processed_data):
     return train_dataloader, train_dataloader2, train_dataloader3, train_dataloader4, 
 # Optimizer and loss
 
+def run(
+    model: nn.Module,
+    data_loader,
+    data_loader2,
+    data_loader3,
+    data_loader4,
+    train_mode: bool,
+    device,
+    args,
+    # loss_fn,
+    optimizer,
+) -> None:
+    model.train() if train_mode else model.eval()
+    losses, losses_der1, losses_der2, losses_docking, losses_screening = (
+        [],
+        [],
+        [],
+        [],
+        [],
+    )
+    (
+        save_pred,
+        save_true,
+        save_pred_docking,
+        save_true_docking,
+        save_pred_screening,
+        save_true_screening,
+    ) = (dict(), dict(), dict(), dict(), dict(), dict())
+    loss_fn = nn.MSELoss()
+    i_batch = 0
+    # for inputs_1, labels_1, inputs_2, labels_2, inputs_3, labels_3, inputs_4, labels_4 in zip(data_loader, data_loader2, data_loader3, data_loader4):
+    for inputs_1, inputs_2, inputs_3, inputs_4 in tqdm(zip(data_loader, data_loader2, data_loader3, data_loader4)):
+        # print(inputs_1)
+        # print(inputs_1.keys())
+        # print('Start', time.time())
+        model.zero_grad()
+
+        # sample = next(data_iter, None)
+        # if sample is None:
+        #     break
+        # sample = utils.dic_to_device(sample, device)
+        # print('Zero grad', time.time())
+        inputs_1 = utils.dic_to_device(inputs_1, device)
+
+        # keys, affinity = sample["key"], sample["affinity"]
+        # print('dataset 1 to gpu', time.time())
+        loss_all = 0.0
+        cal_der_loss = False
+        if args.loss_der1_ratio > 0 or args.loss_der2_ratio > 0.0:
+            cal_der_loss = True
+
+        pred, loss_der1, loss_der2 = model(**dict(sample=inputs_1, DM_min = 0.5, cal_der_loss =cal_der_loss))
+        loss = loss_fn(pred.sum(-1), inputs_1['affinity'])
+        loss_der2 = loss_der2.clamp(min=args.min_loss_der2)
+        loss_all += loss
+        loss_all += loss_der1.sum() * args.loss_der1_ratio
+        loss_all += loss_der2.sum() * args.loss_der2_ratio
+
+        # print('loss 1 calc', time.time())
+
+        # loss4
+        loss_docking = torch.zeros((1,))
+        keys_docking = []
+        if args.loss_docking_ratio > 0.0:
+            # sample_docking = next(data_iter2, None)
+            # sample_docking = utils.dic_to_device(sample_docking, device)
+            inputs_2 = utils.dic_to_device(inputs_2, device)
+            # print('dataset 2 to gpu', time.time())
+            # keys_docking, affinity_docking = (
+            #     sample_docking["key"],
+            #     sample_docking["affinity"],
+            # )
+            pred_docking, _, _ = model(**dict(sample=inputs_2, DM_min = 0.5, cal_der_loss =False))
+            loss_docking = inputs_2['affinity'] - pred_docking.sum(-1)
+            loss_docking = loss_docking.clamp(args.min_loss_docking).mean()
+            loss_all += loss_docking * args.loss_docking_ratio
+
+        # print('loss 2 calc', time.time())
+        loss_screening = torch.zeros((1,))
+        keys_screening = []
+        if args.loss_screening_ratio > 0.0:
+            # sample_screening = next(data_iter3, None)
+            # sample_screening = utils.dic_to_device(sample_screening, device)
+            # print('dataset 3 to gpu', time.time())
+            inputs_3 = utils.dic_to_device(inputs_3, device)
+            # keys_screening, affinity_screening = (
+            #     sample_screening["key"],
+            #     sample_screening["affinity"],
+            # )
+            pred_screening, _, _ = model(**dict(sample=inputs_3, DM_min = 0.5, cal_der_loss =False))
+            loss_screening = inputs_3['affinity'] - pred_screening.sum(-1)
+            loss_screening = loss_screening.clamp(min=0.0).mean()
+            loss_all += loss_screening * args.loss_screening_ratio
+        # print('loss 3 calc', time.time())
+        loss_screening2 = torch.zeros((1,))
+        keys_screening2 = []
+        if args.loss_screening2_ratio > 0.0:
+            # sample_screening2 = next(data_iter4, None)
+            # sample_screening2 = utils.dic_to_device(sample_screening2, device)
+            # keys_screening2, affinity_screening2 = (
+            #     sample_screening2["key"],
+            #     sample_screening2["affinity"],
+            # )
+            inputs_4 = utils.dic_to_device(inputs_4, device)
+            # print('dataset 4 to gpu', time.time())
+            pred_screening2, _, _ = model(**dict(sample=inputs_4, DM_min = 0.5, cal_der_loss =False))
+            loss_screening2 = inputs_4['affinity'] - pred_screening2.sum(-1)
+            loss_screening2 = loss_screening2.clamp(min=0.0).mean()
+            loss_all += loss_screening2 * args.loss_screening2_ratio
+        # print('All losses calc', time.time())
+        if train_mode:
+            loss_all.backward()
+            optimizer.step()
+        # print('backwards step done', time.time())
+    return None
+
 def train_model(args):
     model, device, processed_data = set_up_training(args)
     train_dataloader, train_dataloader2,  train_dataloader3, train_dataloader4 = load_all_dataloaders(args, processed_data)
     optimizer = torch.optim.Adam(
         model.parameters(), lr=args.lr, weight_decay=args.weight_decay
     )
-    loss_fn = nn.MSELoss()
+    
 
     # train
     # writer = SummaryWriter(args.tensorboard_dir)
@@ -307,14 +440,6 @@ def train_model(args):
             train_losses_docking,
             train_losses_screening,
         ) = ([], [], [], [], [])
-        # (
-        #     test_losses,
-        #     test_losses_der1,
-        #     test_losses_der2,
-        #     test_losses_docking,
-        #     test_losses_screening,
-        # ) = ([], [], [], [], [])
-
         (
             train_pred,
             train_true,
@@ -323,172 +448,18 @@ def train_model(args):
             train_pred_screening,
             train_true_screening,
         ) = (dict(), dict(), dict(), dict(), dict(), dict())
-        # (
-        #     test_pred,
-        #     test_true,
-        #     test_pred_docking,
-        #     test_true_docking,
-        #     test_pred_screening,
-        #     test_true_screening,
-        # ) = (dict(), dict(), dict(), dict(), dict(), dict())
-
-        # iterator
-        train_data_iter, train_data_iter2, train_data_iter3, train_data_iter4 = (
-            iter(train_dataloader),
-            iter(train_dataloader2),
-            iter(train_dataloader3),
-            iter(train_dataloader4),
-        )
-        # test_data_iter, test_data_iter2, test_data_iter3, test_data_iter4 = (
-        #     iter(test_dataloader),
-        #     iter(test_dataloader2),
-        #     iter(test_dataloader3),
-        #     iter(test_dataloader4),
-        # )
-
-        # Train
-        (
-            train_losses,
-            train_losses_der1,
-            train_losses_der2,
-            train_losses_docking,
-            train_losses_screening,
-            train_pred,
-            train_true,
-            train_pred_docking,
-            train_true_docking,
-            train_pred_screening,
-            train_true_screening,
-        ) = run(
+        run(
             model,
-            train_data_iter,
-            train_data_iter2,
-            train_data_iter3,
-            train_data_iter4,
+            train_dataloader,
+            train_dataloader2,
+            train_dataloader3,
+            train_dataloader4,
             True,
             device,
             args,
-            loss_fn,
+            # loss_fn,
             optimizer,
         )
-
-        # Test
-        # (
-        #     test_losses,
-        #     test_losses_der1,
-        #     test_losses_der2,
-        #     test_losses_docking,
-        #     test_losses_screening,
-        #     test_pred,
-        #     test_true,
-        #     test_pred_docking,
-        #     test_true_docking,
-        #     test_pred_screening,
-        #     test_true_screening,
-        # ) = run(
-        #     model,
-        #     test_data_iter,
-        #     test_data_iter2,
-        #     test_data_iter3,
-        #     test_data_iter4,
-        #     False,
-        # )
-
-        # Write tensorboard
-        # writer.add_scalars(
-        #     "train",
-        #     {
-        #         "loss": train_losses,
-        #         "loss_der1": train_losses_der1,
-        #         "loss_der2": train_losses_der2,
-        #         "loss_docking": train_losses_docking,
-        #         "loss_screening": train_losses_screening,
-        #     },
-        #     epoch,
-        # )
-        # writer.add_scalars(
-        #     "test",
-        #     {
-        #         "loss": test_losses,
-        #         "loss_der1": test_losses_der1,
-        #         "loss_der2": test_losses_der2,
-        #         "loss_docking": test_losses_docking,
-        #         "loss_screening": test_losses_screening,
-        #     },
-        #     epoch,
-        # )
-
-        # # Write prediction
-        # utils.write_result(
-        #     .args.train_result_filename,
-        #     train_pred,
-        #     train_true,
-        # )
-        # utils.write_result(
-        #     .args.test_result_filename,
-        #     test_pred,
-        #     test_true,
-        # )
-        # utils.write_result(
-        #     .args.train_result_docking_filename,
-        #     train_pred_docking,
-        #     train_true_docking,
-        # )
-        # utils.write_result(
-        #     args.test_result_docking_filename,
-        #     test_pred_docking,
-        #     test_true_docking,
-        # )
-        # utils.write_result(
-        #     args.train_result_screening_filename,
-        #     train_pred_screening,
-        #     train_true_screening,
-        # )
-        # utils.write_result(
-        #     args.test_result_screening_filename,
-        #     test_pred_screening,
-        #     test_true_screening,
-        # )
-        # end = time.time()
-
-        # Cal R2
-        # train_r2 = r2_score(
-        #     [train_true[k] for k in train_true.keys()],
-        #     [train_pred[k].sum() for k in train_true.keys()],
-        # )
-        # test_r2 = r2_score(
-        #     [test_true[k] for k in test_true.keys()],
-        #     [test_pred[k].sum() for k in test_true.keys()],
-        # )
-
-        # Cal R
-        # _, _, test_r, _, _ = stats.linregress(
-        #     [test_true[k] for k in test_true.keys()],
-        #     [test_pred[k].sum() for k in test_true.keys()],
-        # )
-        # _, _, train_r, _, _ = stats.linregress(
-        #     [train_true[k] for k in train_true.keys()],
-        #     [train_pred[k].sum() for k in train_true.keys()],
-        # )
-        # end = time.time()
-        # if epoch == 0:
-        #     print(
-        #         "epoch\ttrain_l\ttrain_l_der1\ttrain_l_der2\ttrain_l_docking\t"
-        #         + "train_l_screening\ttest_l\ttest_l_der1\ttest_l_der2\t"
-        #         + "test_l_docking\ttest_l_screening\t"
-        #         + "train_r2\ttest_r2\ttrain_r\ttest_r\ttime"
-        #     )
-        # print(
-        #     f"{epoch}\t{train_losses:.3f}\t{train_losses_der1:.3f}\t"
-        #     + f"{train_losses_der2:.3f}\t{train_losses_docking:.3f}\t"
-        #     + f"{train_losses_screening:.3f}\t"
-        #     + f"{test_losses:.3f}\t{test_losses_der1:.3f}\t"
-        #     + f"{test_losses_der2:.3f}\t{test_losses_docking:.3f}\t"
-        #     + f"{test_losses_screening:.3f}\t"
-        #     + f"{train_r2:.3f}\t{test_r2:.3f}\t"
-        #     + f"{train_r:.3f}\t{test_r:.3f}\t{end-st:.3f}"
-        # )
-
         name = os.path.join(f'temp_models/{args.model_name}.pt')
         save_every = 1 if not args.save_every else args.save_every
         if epoch % save_every == 0:
@@ -499,9 +470,24 @@ def train_model(args):
             param_group["lr"] = lr
     
 
+def predict(args, model, test_dataloader, device):
+    model.eval()
+    all_predictions = []
+    all_affinity = []
+    all_keys = []
+    for data in test_dataloader:
+        model.zero_grad()
+        keys, affinity = data["key"], data["affinity"]
+        data = utils.dic_to_device(data, device)
+        pred, _, _ = model(**dict(sample=data, DM_min = 0.5, cal_der_loss =False))
+        all_keys = all_keys + list(keys)
+        all_affinity = all_affinity + list(affinity)
+        all_predictions = all_predictions + list(pred.detach().cpu().numpy()[0])
+    return pd.DataFrame({'key': all_keys, 'pred': all_predictions, 'pk': all_affinity})
+    
 
 if __name__ == "__main__":
-    print('test')
+    # print('test')
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument('--csv_file', type=str, default='train.csv')
@@ -532,7 +518,7 @@ if __name__ == "__main__":
     parser.add_argument("--lr",help="learning rate",type=float,default=1e-4,)
     parser.add_argument("--lr_decay",help="learning rate decay",type=float,default=1.0,)
     parser.add_argument("--weight_decay",help="weight decay",type=float,default=0.0,)
-    parser.add_argument("--num_epochs",help="number of epochs",type=int,default=3001,)
+    parser.add_argument("--num_epochs",help="number of epochs",type=int,default=2300,)
     parser.add_argument("--loss_der1_ratio",help="loss der1 ratio",type=float,default=10.0,)
     parser.add_argument("--loss_der2_ratio",help="loss der2 ratio",type=float,default=10.0)
     parser.add_argument("--min_loss_der2",help="min loss der2",type=float,default=-20.0,)
@@ -547,10 +533,28 @@ if __name__ == "__main__":
     if args.train:
         if not os.path.exists(f'temp_features/{args.model_name}'):
             os.mkdir(f'temp_features/{args.model_name}')
-        # Check PigNet files exist
         get_files(args.pignet_data_dir)
-        # Check featurised data exists
-
         train_model(args)
     elif args.predict:
-        pass
+        if not os.path.exists(f'temp_features/{args.val_csv_file.split("/")[-1].split(".csv")[0]}'):
+            os.mkdir(f'temp_features/{args.val_csv_file.split("/")[-1].split(".csv")[0]}')
+        set_up_predicting(args)
+        train_keys, _, id_to_y = read_data(f'temp_features/{args.val_csv_file.split("/")[-1].split(".csv")[0]}/pdb_to_affinity.txt',f'temp_features/{args.val_csv_file.split("/")[-1].split(".csv")[0]}')
+        _, val_dataloader = get_dataset_dataloader(train_keys,f'temp_features/{args.val_csv_file.split("/")[-1].split(".csv")[0]}', id_to_y, args.batch_size, args.num_workers)
+        print('Using CUDA')
+        device = torch.device("cuda")
+        if args.model == "pignet":
+            model = models.PIGNet(args)
+        elif args.model == "gnn":
+            model = models.GNN(args)
+        elif args.model == "cnn3d_kdeep":
+            model = models.CNN3D_KDEEP(args)
+        else:
+            print(f"No {args.model} model")
+            exit()
+        # model.load_state_dict(torch.load(f'save/PIGNet/save_2300.pt'))
+        model = utils.initialize_model(model, device, 'save/PIGNet/save_2300.pt')
+        # model.to(device)
+        df = predict(args, model, val_dataloader, device)
+        df.to_csv(f'results/{args.model_name}_{args.val_csv_file.split("/")[-1].split(".csv")[0]}.csv')
+            
